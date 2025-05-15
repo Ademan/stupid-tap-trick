@@ -39,9 +39,11 @@ use bitcoin::{
 
 use bitcoin::secp256k1::{
     Message,
-    XOnlyPublicKey,
+    Secp256k1,
     SecretKey,
-    Secp256k1, Verification, Signing, Parity,
+    Signing,
+    Verification,
+    XOnlyPublicKey,
 };
 
 use clap::{
@@ -278,14 +280,6 @@ fn main() {
 
             let mut sighash_cache = SighashCache::new(&spend_tx);
 
-            let (_pubkey, parity) = args.secret_key.x_only_public_key(&secp);
-
-            let secret_key = if parity == Parity::Odd {
-                args.secret_key.negate()
-            } else {
-                args.secret_key
-            };
-
             let leaf_hash = bitcoin::TapLeafHash::from_script(&address_info.script(&secp), LeafVersion::TapScript);
 
             let prevouts_vec = vec![prevout.clone()];
@@ -294,7 +288,7 @@ fn main() {
             let sighash = sighash_cache.taproot_signature_hash(0, &prevouts, None, Some((leaf_hash, 0xFFFFFFFF)), TapSighashType::All).unwrap();
 
             let message = Message::from(sighash);
-            let signature = secp.sign_schnorr_with_rng(&message, &secret_key.keypair(&secp), &mut rand::thread_rng());
+            let signature = secp.sign_schnorr_with_rng(&message, &args.secret_key.keypair(&secp), &mut rand::thread_rng());
 
             spend_tx.input[0].witness = {
                 let mut witness = Witness::new();
